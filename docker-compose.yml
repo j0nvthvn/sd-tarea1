@@ -1,0 +1,32 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "10mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+
+  scraper:
+    build: ./scraper
+    depends_on: [redis]
+    environment:
+      - REDIS_HOST=redis
+
+  cache:
+    build: ./cache
+    depends_on: [redis, scraper]
+    environment:
+      - REDIS_HOST=redis
+      - TTL_SECONDS=300
+
+  metricas:
+    build: ./metricas
+    depends_on: [redis]
+    volumes:
+      - ./data:/app/data
+
+  generador:
+    build: ./generador
+    depends_on: [cache]
+    environment:
+      - DISTRIBUCION=zipf
+      - N_CONSULTAS=1000
