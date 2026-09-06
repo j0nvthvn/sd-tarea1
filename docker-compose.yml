@@ -17,6 +17,8 @@ services:
     environment:
       - REDIS_HOST=redis
       - TTL_SECONDS=300
+    ports:
+      - "8000:5000"
 
   metricas:
     build: ./metricas

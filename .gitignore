@@ -4,3 +4,5 @@ __pycache__/
 data/*.csv
 data/*.html
 .venv/
+# Conservar el snapshot de la tabla (fallback demo + USAR_SNAPSHOT)
+!data/pagina_tabla.html
