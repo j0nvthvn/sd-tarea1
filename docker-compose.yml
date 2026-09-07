@@ -2,16 +2,14 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--maxmemory", "10mb", "--maxmemory-policy", "allkeys-lru"]
-    ports:
-      - "6379:6379"
 
   scraper:
     build: ./scraper
     depends_on: [redis]
     environment:
-      # true = usa data/matches.json (offline, determinista para experimentos/demo)
-      # false = descarga Soccerway en vivo con httpx
-      - SOCCERWAY_OFFLINE=true
+      # false = scraping real de Soccerway al iniciar (por defecto)
+      # true  = usa data/matches.json (offline, para experimentos reproducibles)
+      - SOCCERWAY_OFFLINE=false
 
   cache:
     build: ./cache

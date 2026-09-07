@@ -7,7 +7,7 @@ import httpx
 
 URL = "https://cl.soccerway.com/chile/liga-de-primera/"
 DATA = Path(__file__).parent / "data"
-OFFLINE = os.getenv("SOCCERWAY_OFFLINE", "true").lower() == "true"
+OFFLINE = os.getenv("SOCCERWAY_OFFLINE", "false").lower() == "true"
 
 # Separadores de los feeds embebidos de Soccerway (registro, campo, clave-valor)
 SEP_REG, SEP_CAMPO, SEP_KV = "~", "¬", "÷"
@@ -59,24 +59,37 @@ def descargar_html() -> str:
         return r.text
 
 
-def _cargar_matches_live() -> list:
+def cargar_matches_live() -> list:
+    """Scraping real: descarga Soccerway y decodifica los feeds embebidos."""
     html = descargar_html()
     matches = (_parse_matches(_extraer_feed(html, "results"), "finished")
                + _parse_matches(_extraer_feed(html, "fixtures"), "scheduled"))
-    return list({m["match_id"]: m for m in matches}.values())
+    matches = list({m["match_id"]: m for m in matches}.values())
+    if not matches:
+        raise ValueError("no se pudieron extraer partidos del HTML de Soccerway")
+    return matches
+
+
+def cargar_matches_offline() -> list:
+    return json.loads((DATA / "matches.json").read_text(encoding="utf-8"))
+
+
+def cargar_standings() -> list:
+    return json.loads((DATA / "standings.json").read_text(encoding="utf-8"))
 
 
 def cargar_snapshot() -> dict:
-    """Precarga en memoria: partidos (live u offline) + tabla oficial (snapshot)."""
+    """Obtiene los datos (live u offline) y los deja listos para precargar en memoria.
+
+    Lanza excepción si la obtención falla; quien la llama decide si conserva
+    el snapshot anterior o cae a offline.
+    """
     t0 = time.perf_counter()
-    if OFFLINE:
-        matches = json.loads((DATA / "matches.json").read_text(encoding="utf-8"))
-    else:
-        matches = _cargar_matches_live()
-    standings = json.loads((DATA / "standings.json").read_text(encoding="utf-8"))
+    matches = cargar_matches_offline() if OFFLINE else cargar_matches_live()
     return {
         "matches": matches,
-        "standings": standings,
+        "standings": cargar_standings(),
+        "fuente": "offline" if OFFLINE else "soccerway",
         "scraping_time_ms": (time.perf_counter() - t0) * 1000,
         "refreshed_at": time.time(),
     }

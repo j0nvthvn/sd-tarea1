@@ -34,9 +34,18 @@ def consulta():
         return jsonify({"cache": "hit", "data": json.loads(cached),
                         "latencia_ms": (time.time() - t0) * 1000})
 
-    resp = requests.get(SCRAPER_URL, params=params, timeout=30).json()
-    r.setex(key, TTL, json.dumps(resp))
-    return jsonify({"cache": "miss", "data": resp,
+    try:
+        resp = requests.get(SCRAPER_URL, params=params, timeout=30)
+    except requests.RequestException as e:
+        return jsonify({"error": f"scraper no disponible: {e}"}), 502
+
+    # Los errores del scraper (p. ej. validacion 400) se propagan y NO se cachean
+    if resp.status_code != 200:
+        return jsonify({"cache": "bypass", **resp.json()}), resp.status_code
+
+    data = resp.json()
+    r.setex(key, TTL, json.dumps(data))
+    return jsonify({"cache": "miss", "data": data,
                     "latencia_ms": (time.time() - t0) * 1000})
 
 
