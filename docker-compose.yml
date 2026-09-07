@@ -9,7 +9,9 @@ services:
     build: ./scraper
     depends_on: [redis]
     environment:
-      - REDIS_HOST=redis
+      # true = usa data/matches.json (offline, determinista para experimentos/demo)
+      # false = descarga Soccerway en vivo con httpx
+      - SOCCERWAY_OFFLINE=true
 
   cache:
     build: ./cache

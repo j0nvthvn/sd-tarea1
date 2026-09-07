@@ -1,4 +1,2 @@
 flask
-beautifulsoup4
-lxml
-playwright==1.47.0
+httpx
