@@ -62,8 +62,6 @@ def main():
 
     print("\nConsultas generadas:")
 
-    print("\nConsultas generadas:")
-
     for i in range(config.n_consultas):
         consulta = generador()
 
