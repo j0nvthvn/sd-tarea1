@@ -28,7 +28,18 @@ services:
 
   generador:
     build: ./generador
-    depends_on: [cache]
+    depends_on: [cache, scraper]
+    volumes:
+      # El detalle por consulta se escribe aca para armar los graficos del informe
+      - ./data:/app/data
     environment:
+      - CACHE_URL=http://cache:5000/consulta
+      # depends_on no espera a que el scraper termine de cargar su snapshot
+      - HEALTH_URL=http://scraper:5000/health
       - DISTRIBUCION=zipf
+      - ZIPF_S=1.0
+      - LLEGADAS=poisson
       - N_CONSULTAS=1000
+      - TASA_ARRIBO=20
+      - SEED=42
+      - CSV_SALIDA=/app/data/generador_zipf.csv
