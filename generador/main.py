@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-
+from queries import generar_consulta
 
 @dataclass
 class Config:
@@ -52,7 +52,10 @@ def main():
     print(f"Tasa de arribo: {config.tasa_arribo} consultas/s")
     print(f"Seed: {config.seed}")
     print(f"Cache URL: {config.cache_url}")
+    print("\nConsultas generadas:")
 
+    for _ in range(5):
+        print(generar_consulta())
 
 if __name__ == "__main__":
     main()
