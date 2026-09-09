@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from queries import generar_consulta
+from distributions import seleccionar_uniforme
 
 @dataclass
 class Config:
@@ -55,7 +55,7 @@ def main():
     print("\nConsultas generadas:")
 
     for _ in range(5):
-        print(generar_consulta())
+        print(seleccionar_uniforme())
 
 if __name__ == "__main__":
     main()
