@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from distributions import seleccionar_uniforme
+from distributions import seleccionar_uniforme, seleccionar_zipf
 
 @dataclass
 class Config:
@@ -52,10 +52,18 @@ def main():
     print(f"Tasa de arribo: {config.tasa_arribo} consultas/s")
     print(f"Seed: {config.seed}")
     print(f"Cache URL: {config.cache_url}")
+
+    if config.distribucion == "uniforme":
+        generador = seleccionar_uniforme
+
+    else:
+        generador = seleccionar_zipf
+
+
     print("\nConsultas generadas:")
 
-    for _ in range(5):
-        print(seleccionar_uniforme())
+    for _ in range(20):
+        print(generador())
 
 if __name__ == "__main__":
     main()
