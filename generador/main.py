@@ -1,5 +1,6 @@
 import os
 import random
+import time
 from dataclasses import dataclass
 from distributions import seleccionar_uniforme, seleccionar_zipf
 from client import enviar_consulta
@@ -81,6 +82,8 @@ def main():
 
             print("Respuesta:")
             print(respuesta)
+
+        time.sleep(1 / config.tasa_arribo)
 
     print(f"\nTotal consultas enviadas: {config.n_consultas}")
 
