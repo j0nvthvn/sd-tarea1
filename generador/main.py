@@ -62,8 +62,17 @@ def main():
 
     print("\nConsultas generadas:")
 
-    for _ in range(20):
-        print(generador())
+    print("\nConsultas generadas:")
+
+    for i in range(config.n_consultas):
+        consulta = generador()
+
+        if i < 5:
+            print(consulta)
+        else:
+            print(f"[{i}] {consulta}")
+
+    print(f"\nTotal consultas generadas: {config.n_consultas}")
 
 if __name__ == "__main__":
     main()
