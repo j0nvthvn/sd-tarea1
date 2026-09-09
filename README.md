@@ -240,4 +240,4 @@ sd-tarea1/
 
 GitLab Grupo 2:
 
-<agregar https://giteit.udp.cl/CIT2011/2026-2/seccion-2/grupo-2>
+<https://giteit.udp.cl/CIT2011/2026-2/seccion-2/grupo-2>
