@@ -1,4 +1,5 @@
 import os
+import random
 from dataclasses import dataclass
 from distributions import seleccionar_uniforme, seleccionar_zipf
 
@@ -45,6 +46,8 @@ def cargar_config() -> Config:
 
 def main():
     config = cargar_config()
+
+    random.seed(config.seed)
 
     print("Configuración del generador")
     print(f"Distribución: {config.distribucion}")
