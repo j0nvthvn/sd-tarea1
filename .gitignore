@@ -1,8 +1,16 @@
 __pycache__/
+
 *.pyc
+
 .env
+
 data/*.csv
+
 data/*.html
+
 .venv/
+
+.DS_Store
+
 # Conservar el snapshot de la tabla (fallback demo + USAR_SNAPSHOT)
 !data/pagina_tabla.html
