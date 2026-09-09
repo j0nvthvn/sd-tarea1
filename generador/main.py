@@ -2,6 +2,7 @@ import os
 import random
 from dataclasses import dataclass
 from distributions import seleccionar_uniforme, seleccionar_zipf
+from client import enviar_consulta
 
 @dataclass
 class Config:
@@ -66,14 +67,22 @@ def main():
     print("\nConsultas generadas:")
 
     for i in range(config.n_consultas):
+
         consulta = generador()
 
-        if i < 5:
-            print(consulta)
-        else:
-            print(f"[{i}] {consulta}")
+        respuesta = enviar_consulta(
+            config.cache_url,
+            consulta
+        )
 
-    print(f"\nTotal consultas generadas: {config.n_consultas}")
+        if i < 5:
+            print("\nConsulta:")
+            print(consulta)
+
+            print("Respuesta:")
+            print(respuesta)
+
+    print(f"\nTotal consultas enviadas: {config.n_consultas}")
 
 if __name__ == "__main__":
     main()
