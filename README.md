@@ -8,8 +8,8 @@ El objetivo del proyecto es implementar y evaluar una arquitectura distribuida u
 
 ## Integrantes
 
-- Felipe Bustos
-- Jonathan Flores
+- Felipe Bustos López
+- Jonathan Flores Torres
 
 ---
 
