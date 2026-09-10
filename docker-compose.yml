@@ -25,6 +25,8 @@ services:
     depends_on: [redis]
     volumes:
       - ./data:/app/data
+    ports:
+      - "9000:5000"
 
   generador:
     build: ./generador
