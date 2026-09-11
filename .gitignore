@@ -8,11 +8,18 @@ __pycache__/
 
 .DS_Store
 
-# Datos generados por experimentos
+
+# Datos generados por consultas individuales
 data/*.csv
+
 
 # Mantener snapshot usado por scraper
 !data/pagina_tabla.html
 
-# Resultados resumidos del experimento
+
+# Resultados resumidos de experimentos
 !data/resumen_*.json
+
+
+# Mantener graficos generados para informe
+!graficos/*.png
