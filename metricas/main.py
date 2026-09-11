@@ -179,6 +179,15 @@ def exportar():
         "eventos": len(eventos)
     })
 
+@app.route("/reset")
+def reset():
+
+    eventos.clear()
+
+    return jsonify({
+        "ok": True,
+        "eventos": len(eventos)
+    })
 
 @app.route("/health")
 def health():

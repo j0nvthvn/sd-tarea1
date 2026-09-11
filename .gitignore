@@ -1,9 +1,18 @@
 __pycache__/
+
 *.pyc
+
 .env
+
 .venv/
+
 .DS_Store
+
+# Datos generados por experimentos
 data/*.csv
-data/*.html
-# Conservar el snapshot de la tabla (fallback demo + USAR_SNAPSHOT)
+
+# Mantener snapshot usado por scraper
 !data/pagina_tabla.html
+
+# Resultados resumidos del experimento
+!data/resumen_*.json
