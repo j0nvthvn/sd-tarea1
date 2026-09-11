@@ -1,57 +1,58 @@
 from flask import Flask, request, jsonify
-from collections import defaultdict
-import csv
-import os
-
 
 app = Flask(__name__)
 
 eventos = []
 
 
-def percentil(valores, p):
+def calcular_percentil(valores, p):
     if not valores:
-        return None
+        return 0.0
 
-    valores = sorted(valores)
+    valores_ordenados = sorted(valores)
 
-    posicion = (len(valores) - 1) * p / 100
+    if len(valores_ordenados) == 1:
+        return float(valores_ordenados[0])
 
+    posicion = (len(valores_ordenados) - 1) * p / 100
     inferior = int(posicion)
-    superior = min(inferior + 1, len(valores) - 1)
-
+    superior = min(inferior + 1, len(valores_ordenados) - 1)
     peso = posicion - inferior
 
     return (
-        valores[inferior] * (1 - peso)
-        + valores[superior] * peso
+        valores_ordenados[inferior] * (1 - peso)
+        + valores_ordenados[superior] * peso
     )
 
 
-def estadisticas_latencia(valores):
+def resumen_latencias(lista_eventos):
+    latencias = [
+        e.get("latencia_ms")
+        for e in lista_eventos
+        if isinstance(e.get("latencia_ms"), (int, float))
+    ]
 
-    if not valores:
+    if not latencias:
         return {
             "cantidad": 0,
-            "media_ms": None,
-            "p50_ms": None,
-            "p95_ms": None,
-            "p99_ms": None
+            "media_ms": 0.0,
+            "p50_ms": 0.0,
+            "p95_ms": 0.0,
+            "p99_ms": 0.0,
         }
 
     return {
-        "cantidad": len(valores),
-        "media_ms": sum(valores) / len(valores),
-        "p50_ms": percentil(valores, 50),
-        "p95_ms": percentil(valores, 95),
-        "p99_ms": percentil(valores, 99)
+        "cantidad": len(latencias),
+        "media_ms": sum(latencias) / len(latencias),
+        "p50_ms": calcular_percentil(latencias, 50),
+        "p95_ms": calcular_percentil(latencias, 95),
+        "p99_ms": calcular_percentil(latencias, 99),
     }
 
 
 @app.route("/evento", methods=["POST"])
 def evento():
-
-    datos = request.json
+    datos = request.get_json(silent=True) or {}
 
     eventos.append(datos)
 
@@ -63,135 +64,59 @@ def evento():
 
 @app.route("/resumen")
 def resumen():
-
     total = len(eventos)
 
-    hits = sum(
-        1 for e in eventos
-        if e.get("cache") == "hit"
-    )
+    hits_eventos = [e for e in eventos if e.get("cache") == "hit"]
+    misses_eventos = [e for e in eventos if e.get("cache") == "miss"]
 
-    misses = sum(
-        1 for e in eventos
-        if e.get("cache") == "miss"
-    )
-
-
-    latencias = [
-        e.get("latencia_ms")
-        for e in eventos
-        if isinstance(e.get("latencia_ms"), (int,float))
-    ]
-
+    hits = len(hits_eventos)
+    misses = len(misses_eventos)
 
     return jsonify({
-
         "consultas": total,
-
         "hits": hits,
-
         "misses": misses,
-
         "hit_rate": hits / total if total else 0,
-
-        "latencia": estadisticas_latencia(latencias)
-
+        "latencia": resumen_latencias(eventos),
+        "latencia_hit": resumen_latencias(hits_eventos),
+        "latencia_miss": resumen_latencias(misses_eventos),
     })
 
 
 @app.route("/resumen/tipos")
 def resumen_tipos():
+    tipos = sorted(set(e.get("tipo") for e in eventos if e.get("tipo")))
 
-    tipos = defaultdict(list)
+    salida = {}
 
+    for tipo in tipos:
+        eventos_tipo = [e for e in eventos if e.get("tipo") == tipo]
+        hits = sum(1 for e in eventos_tipo if e.get("cache") == "hit")
+        misses = sum(1 for e in eventos_tipo if e.get("cache") == "miss")
+        total = len(eventos_tipo)
 
-    for evento in eventos:
-
-        tipos[evento.get("tipo")].append(evento)
-
-
-    resultado = {}
-
-
-    for tipo, datos in tipos.items():
-
-        hits = sum(
-            1 for e in datos
-            if e.get("cache") == "hit"
-        )
-
-        misses = sum(
-            1 for e in datos
-            if e.get("cache") == "miss"
-        )
-
-
-        resultado[tipo] = {
-
-            "consultas": len(datos),
-
+        salida[tipo] = {
+            "consultas": total,
             "hits": hits,
-
             "misses": misses,
-
-            "hit_rate": hits / (hits + misses)
-            if hits + misses else 0
-
+            "hit_rate": hits / total if total else 0
         }
 
+    return jsonify(salida)
 
-    return jsonify(resultado)
-
-
-@app.route("/exportar")
-def exportar():
-
-    ruta = "/app/data/metricas.csv"
-
-    os.makedirs(
-        "/app/data",
-        exist_ok=True
-    )
-
-
-    with open(
-        ruta,
-        "w",
-        newline="",
-        encoding="utf-8"
-    ) as archivo:
-
-
-        escritor = csv.DictWriter(
-            archivo,
-            fieldnames=eventos[0].keys()
-        )
-
-
-        escritor.writeheader()
-
-        escritor.writerows(eventos)
-
-
-    return jsonify({
-        "ok": True,
-        "archivo": ruta,
-        "eventos": len(eventos)
-    })
 
 @app.route("/reset")
 def reset():
-
     eventos.clear()
 
     return jsonify({
         "ok": True,
-        "eventos": len(eventos)
+        "eventos": 0
     })
+
 
 @app.route("/health")
 def health():
-
     return jsonify({
         "ok": True,
         "eventos": len(eventos)
@@ -199,7 +124,6 @@ def health():
 
 
 if __name__ == "__main__":
-
     app.run(
         host="0.0.0.0",
         port=5000

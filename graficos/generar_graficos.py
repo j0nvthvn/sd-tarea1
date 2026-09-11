@@ -1,0 +1,157 @@
+import json
+import os
+import matplotlib.pyplot as plt
+
+DATA_DIR = "data"
+OUT_DIR = "graficos"
+
+
+def cargar_json(nombre):
+    ruta = os.path.join(DATA_DIR, nombre)
+    if not os.path.exists(ruta):
+        return None
+    with open(ruta, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def guardar_grafico(nombre_archivo):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    ruta = os.path.join(OUT_DIR, nombre_archivo)
+    plt.tight_layout()
+    plt.savefig(ruta, dpi=200, bbox_inches="tight")
+    plt.close()
+    print(f"Grafico generado: {ruta}")
+
+
+def grafico_hit_rate_distribucion(zipf_resumen, uniforme_resumen):
+    if not zipf_resumen or not uniforme_resumen:
+        print("Faltan datos para hit_rate_distribucion.png")
+        return
+
+    etiquetas = ["Zipf", "Uniforme"]
+    valores = [
+        zipf_resumen["hit_rate"] * 100,
+        uniforme_resumen["hit_rate"] * 100,
+    ]
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(etiquetas, valores)
+    plt.ylim(0, 100)
+    plt.ylabel("Hit Rate (%)")
+    plt.title("Comparacion del hit rate segun distribucion")
+
+    for i, v in enumerate(valores):
+        plt.text(i, v + 1, f"{v:.2f}%", ha="center")
+
+    guardar_grafico("hit_rate_distribucion.png")
+
+
+def grafico_latencia_hit_miss(zipf_resumen, uniforme_resumen):
+
+    if not zipf_resumen or not uniforme_resumen:
+        print("Faltan datos para latencia_hit_miss.png")
+        return
+
+    if (
+        "latencia_hit" not in zipf_resumen
+        or "latencia_miss" not in zipf_resumen
+        or "latencia_hit" not in uniforme_resumen
+        or "latencia_miss" not in uniforme_resumen
+    ):
+        print("Los JSON no tienen información de latencia hit/miss")
+        return
+
+    categorias = ["Hit", "Miss"]
+
+    zipf_valores = [
+        zipf_resumen["latencia_hit"]["media_ms"],
+        zipf_resumen["latencia_miss"]["media_ms"]
+    ]
+
+    uniforme_valores = [
+        uniforme_resumen["latencia_hit"]["media_ms"],
+        uniforme_resumen["latencia_miss"]["media_ms"]
+    ]
+
+    x = range(len(categorias))
+    ancho = 0.35
+
+    plt.figure(figsize=(8, 5))
+
+    plt.bar(
+        [i - ancho/2 for i in x],
+        zipf_valores,
+        width=ancho,
+        label="Zipf"
+    )
+
+    plt.bar(
+        [i + ancho/2 for i in x],
+        uniforme_valores,
+        width=ancho,
+        label="Uniforme"
+    )
+
+    plt.xticks(x, categorias)
+
+    plt.ylabel("Latencia promedio (ms)")
+    plt.title("Comparación de latencia entre Hit y Miss")
+    plt.legend()
+
+    for i, valor in enumerate(zipf_valores):
+        plt.text(
+            i - ancho/2,
+            valor + 0.2,
+            f"{valor:.2f}",
+            ha="center"
+        )
+
+    for i, valor in enumerate(uniforme_valores):
+        plt.text(
+            i + ancho/2,
+            valor + 0.2,
+            f"{valor:.2f}",
+            ha="center"
+        )
+
+    guardar_grafico("latencia_hit_miss.png")
+
+
+def grafico_hit_rate_por_tipo(zipf_tipos, uniforme_tipos):
+    if not zipf_tipos or not uniforme_tipos:
+        print("Faltan datos para hit_rate_por_tipo.png")
+        return
+
+    tipos = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+    zipf_valores = [zipf_tipos[t]["hit_rate"] * 100 for t in tipos]
+    uniforme_valores = [uniforme_tipos[t]["hit_rate"] * 100 for t in tipos]
+
+    x = list(range(len(tipos)))
+    ancho = 0.35
+
+    plt.figure(figsize=(10, 5))
+    plt.bar([i - ancho / 2 for i in x], zipf_valores, width=ancho, label="Zipf")
+    plt.bar([i + ancho / 2 for i in x], uniforme_valores, width=ancho, label="Uniforme")
+
+    plt.xticks(x, tipos)
+    plt.ylim(0, 100)
+    plt.ylabel("Hit Rate (%)")
+    plt.title("Hit rate por tipo de consulta")
+    plt.legend()
+
+    guardar_grafico("hit_rate_por_tipo.png")
+
+
+def main():
+    zipf_resumen = cargar_json("resumen_zipf.json")
+    uniforme_resumen = cargar_json("resumen_uniforme.json")
+    zipf_tipos = cargar_json("resumen_zipf_tipos.json")
+    uniforme_tipos = cargar_json("resumen_uniforme_tipos.json")
+
+    grafico_hit_rate_distribucion(zipf_resumen, uniforme_resumen)
+    grafico_latencia_hit_miss(zipf_resumen, uniforme_resumen)
+    grafico_hit_rate_por_tipo(zipf_tipos, uniforme_tipos)
+
+
+if __name__ == "__main__":
+    main()

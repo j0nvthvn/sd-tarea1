@@ -19,7 +19,9 @@ generador
 echo "Guardando resumen..."
 
 curl http://localhost:9000/resumen > data/resumen_uniforme.json
-
 curl http://localhost:9000/resumen/tipos > data/resumen_uniforme_tipos.json
+
+echo "Generando gráficos..."
+python3 graficos/generar_graficos.py
 
 echo "Experimento Uniforme terminado"

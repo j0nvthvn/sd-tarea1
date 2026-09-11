@@ -20,7 +20,9 @@ generador
 echo "Guardando resumen..."
 
 curl http://localhost:9000/resumen > data/resumen_zipf.json
-
 curl http://localhost:9000/resumen/tipos > data/resumen_zipf_tipos.json
+
+echo "Generando gráficos..."
+python3 graficos/generar_graficos.py
 
 echo "Experimento Zipf terminado"
