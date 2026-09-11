@@ -30,13 +30,12 @@ services:
 
   generador:
     build: ./generador
-    depends_on: [cache, scraper]
+    depends_on: [cache, scraper, metricas]
     volumes:
-      # El detalle por consulta se escribe aca para armar los graficos del informe
       - ./data:/app/data
     environment:
       - CACHE_URL=http://cache:5000/consulta
-      # depends_on no espera a que el scraper termine de cargar su snapshot
+      - METRICAS_URL=http://metricas:5000/evento
       - HEALTH_URL=http://scraper:5000/health
       - DISTRIBUCION=zipf
       - ZIPF_S=1.0
