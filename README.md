@@ -2,7 +2,7 @@
 
 Sistema distribuido de caché aplicado a consultas deportivas sobre datos de fútbol chileno obtenidos desde Soccerway.
 
-El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico, tamaños de memoria y métricas de rendimiento.
+El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico, tamaños de memoria y políticas de reemplazo.
 
 ---
 
@@ -19,7 +19,7 @@ El objetivo del proyecto es implementar y evaluar una arquitectura distribuida u
 
 La arquitectura está compuesta por los siguientes servicios:
 
-```
+```text
                     +-------------+
                     |    Redis    |
                     | Cache Store |
@@ -97,7 +97,9 @@ Configuración:
 
 - Redis 7 Alpine.
 - TTL configurable.
-- Política de reemplazo LRU (`allkeys-lru`).
+- Política de reemplazo configurable:
+  - `allkeys-lru`.
+  - `allkeys-random`.
 - Tamaño de memoria configurable mediante `REDIS_MEMORY`.
 
 ---
@@ -125,7 +127,7 @@ El sistema implementa cinco tipos de consultas:
 
 ---
 
-## Levantar el sistema completo
+## Levantar sistema completo
 
 ```bash
 docker compose up --build
@@ -133,11 +135,11 @@ docker compose up --build
 
 Esto inicia los servicios:
 
-- Redis
-- Scraper
-- Cache
-- Métricas
-- Generador
+- Redis.
+- Scraper.
+- Cache.
+- Métricas.
+- Generador.
 
 ---
 
@@ -148,12 +150,12 @@ El comportamiento del generador puede modificarse mediante variables de entorno.
 | Variable | Descripción |
 |----------|-------------|
 | DISTRIBUCION | Distribución de consultas: uniforme o zipf |
-| ZIPF_S | Parámetro de la distribución Zipf |
+| ZIPF_S | Parámetro distribución Zipf |
 | LLEGADAS | Modelo de llegada: poisson o constante |
 | N_CONSULTAS | Cantidad total de consultas |
 | TASA_ARRIBO | Tasa de llegada de consultas |
 | SEED | Semilla para reproducibilidad |
-| CSV_SALIDA | Archivo donde se almacenan resultados |
+| CSV_SALIDA | Archivo de salida |
 | CACHE_PADDING_BYTES | Tamaño artificial agregado a respuestas |
 
 Ejemplo:
@@ -174,14 +176,16 @@ generador
 
 # Experimentos realizados
 
-## Comparación de distribuciones
+---
+
+# Comparación de distribuciones
 
 Se evaluó el comportamiento del sistema utilizando dos patrones de generación de tráfico:
 
 - Distribución Zipf.
 - Distribución Uniforme.
 
-Condiciones:
+## Configuración
 
 - 1000 consultas.
 - Llegadas Poisson.
@@ -189,7 +193,7 @@ Condiciones:
 - Seed: 42.
 - Caché inicialmente vacía.
 
-## Resultados principales
+## Resultados
 
 | Métrica | Zipf | Uniforme |
 |---------|------|----------|
@@ -199,23 +203,31 @@ Condiciones:
 | Errores | 0 | 0 |
 | Hit Rate | 88.60% | 83.40% |
 
-Los resultados muestran que Zipf obtiene un mayor hit rate debido a la concentración de consultas sobre claves populares, aumentando la reutilización de información almacenada en caché.
+## Análisis
+
+La distribución Zipf obtiene un mayor hit rate debido a que concentra las consultas en un conjunto reducido de claves populares.
+
+Esto permite una mayor reutilización de información almacenada en caché, mientras que la distribución uniforme presenta accesos más dispersos.
 
 ---
 
 # Experimentos de tamaño de caché
 
-Se evaluó el impacto de aumentar la memoria disponible en Redis utilizando:
+Se evaluó el impacto de aumentar la memoria disponible en Redis.
 
-- Redis con política `allkeys-lru`.
-- Distribución uniforme.
-- 10000 consultas.
-- Seed fija.
-- Padding artificial de respuestas.
-- Tamaños de caché:
-  - 2 MB.
-  - 5 MB.
-  - 10 MB.
+## Configuración
+
+- Política Redis: `allkeys-lru`.
+- Distribución: Uniforme.
+- Consultas: 10000.
+- Seed: 42.
+- Padding artificial: 5000 bytes.
+
+Tamaños evaluados:
+
+- 2 MB.
+- 5 MB.
+- 10 MB.
 
 ## Resultados
 
@@ -227,34 +239,114 @@ Se evaluó el impacto de aumentar la memoria disponible en Redis utilizando:
 
 ## Análisis
 
-El aumento del tamaño de caché reduce significativamente las expulsiones realizadas por Redis mediante la política LRU.
+Al aumentar la memoria disponible disminuyen las expulsiones realizadas por Redis.
 
-Sin embargo, el hit rate presenta variaciones mínimas debido al patrón uniforme de consultas y al amplio espacio de claves disponible. Bajo este escenario, aumentar la memoria permite almacenar más información, pero no garantiza una mayor reutilización de consultas.
+Sin embargo, el hit rate presenta cambios mínimos debido al patrón uniforme y al amplio espacio de claves generado.
+
+El aumento de memoria permite almacenar más información, pero no necesariamente aumenta la reutilización cuando las consultas están distribuidas uniformemente.
 
 ---
 
-# Métricas generadas
+# Evaluación de políticas de reemplazo
 
-El sistema registra información de cada consulta:
+Se compararon dos políticas de reemplazo de Redis:
 
-- Tipo de consulta.
-- Parámetros utilizados.
-- Estado del caché:
-  - Hit.
-  - Miss.
-  - Error.
-- Latencia de respuesta.
-- Cantidad de resultados obtenidos.
-- Información de evicciones Redis.
-- Uso de memoria Redis.
+- `allkeys-lru`.
+- `allkeys-random`.
 
-Resultados almacenados:
+## Configuración
 
+- Caché: 2 MB.
+- Consultas: 10000.
+- Distribución: Uniforme.
+- Modelo de llegada: Poisson.
+- Seed: 42.
+- Padding artificial: 5000 bytes.
+- Caché inicialmente vacía.
+
+## Resultados
+
+| Métrica | LRU | Random |
+|---------|-----|--------|
+| Consultas | 10000 | 10000 |
+| Hits | 2014 | 2010 |
+| Misses | 7986 | 7990 |
+| Hit Rate | 20.14% | 20.10% |
+| Latencia promedio | 6.476 ms | 6.474 ms |
+| Evicciones | 7429 | 7396 |
+
+## Análisis
+
+Ambas políticas presentan resultados similares debido a la ausencia de una fuerte localidad temporal en las consultas.
+
+Aunque LRU intenta conservar las claves utilizadas recientemente, bajo un patrón uniforme no logra una ventaja significativa frente a Random.
+
+La diferencia de hit rate fue menor al 0.05%, mostrando que bajo este escenario la política de reemplazo tiene un impacto reducido.
+
+---
+
+# Scripts de experimentación
+
+Todos los experimentos fueron automatizados mediante scripts Bash ubicados en:
+
+```text
+experimentos/
 ```
+
+---
+
+# Experimentos de distribución
+
+Comparan el comportamiento del sistema utilizando diferentes patrones de popularidad.
+
+## Scripts
+
+```bash
+./experimentos/zipf.sh
+
+./experimentos/uniforme.sh
+```
+
+## Configuración
+
+- Consultas: 1000.
+- Llegadas: Poisson.
+- Tasa de llegada: 20 consultas/s.
+- Seed: 42.
+- Caché inicialmente vacía.
+
+Resultados:
+
+```text
 data/
 
+├── resumen_zipf.json
+├── resumen_uniforme.json
+├── resumen_zipf_tipos.json
+├── resumen_uniforme_tipos.json
 ├── generador_zipf.csv
-├── generador_uniforme.csv
+└── generador_uniforme.csv
+```
+
+---
+
+# Experimentos de tamaño de caché
+
+## Scripts
+
+```bash
+./experimentos/cache_2mb.sh
+
+./experimentos/cache_5mb.sh
+
+./experimentos/cache_10mb.sh
+```
+
+Resultados:
+
+```text
+data/
+
 ├── resumen_cache_2mb.json
 ├── resumen_cache_5mb.json
 ├── resumen_cache_10mb.json
@@ -265,9 +357,51 @@ data/
 
 ---
 
+# Experimentos de políticas de reemplazo
+
+## Scripts
+
+```bash
+./experimentos/politica_lru.sh
+
+./experimentos/politica_random.sh
+```
+
+Resultados:
+
+```text
+data/
+
+├── resumen_politica_lru.json
+├── resumen_politica_random.json
+├── evicted_politica_lru.txt
+├── evicted_politica_random.txt
+├── dbsize_politica_lru.txt
+└── dbsize_politica_random.txt
+```
+
+---
+
+# Métricas generadas
+
+El sistema registra:
+
+- Tipo de consulta.
+- Parámetros utilizados.
+- Estado del caché:
+  - Hit.
+  - Miss.
+  - Error.
+- Latencia.
+- Cantidad de resultados.
+- Evicciones Redis.
+- Uso de memoria Redis.
+
+---
+
 # Generación de gráficos
 
-Los gráficos experimentales se generan automáticamente mediante:
+Los gráficos se generan mediante:
 
 ```bash
 python3 graficos/generar_graficos.py
@@ -281,10 +415,13 @@ Se generan:
 - Hit rate según tamaño de caché.
 - Evicciones según tamaño de caché.
 - Latencia según tamaño de caché.
+- Hit rate según política de reemplazo.
+- Evicciones según política de reemplazo.
+- Latencia según política de reemplazo.
 
-Archivos generados:
+Archivos:
 
-```
+```text
 graficos/
 
 ├── hit_rate_distribucion.png
@@ -292,36 +429,17 @@ graficos/
 ├── latencia_hit_miss.png
 ├── hit_rate_cache.png
 ├── evictions_cache.png
-└── latencia_cache.png
+├── latencia_cache.png
+├── hit_rate_politicas.png
+├── evictions_politicas.png
+└── latencia_politicas.png
 ```
-
----
-
-# Experimentos de caché
-
-Los experimentos de memoria pueden ejecutarse mediante:
-
-```bash
-./experimentos/cache_2mb.sh
-
-./experimentos/cache_5mb.sh
-
-./experimentos/cache_10mb.sh
-```
-
-Cada script:
-
-1. Configura el tamaño de memoria Redis.
-2. Limpia la caché.
-3. Ejecuta el generador.
-4. Guarda métricas del experimento.
-5. Genera gráficos cuando están disponibles todos los resultados.
 
 ---
 
 # Estructura del proyecto
 
-```
+```text
 sd-tarea1/
 
 ├── cache/
@@ -329,6 +447,13 @@ sd-tarea1/
 ├── generador/
 ├── metricas/
 ├── experimentos/
+│   ├── zipf.sh
+│   ├── uniforme.sh
+│   ├── cache_2mb.sh
+│   ├── cache_5mb.sh
+│   ├── cache_10mb.sh
+│   ├── politica_lru.sh
+│   └── politica_random.sh
 ├── graficos/
 ├── data/
 ├── docker-compose.yml

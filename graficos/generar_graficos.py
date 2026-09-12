@@ -331,6 +331,235 @@ def grafico_latencia_cache():
         "latencia_cache.png"
     )
 
+def grafico_hit_rate_politicas():
+
+    politicas = ["LRU", "Random"]
+
+    valores = []
+
+    for politica in ["lru", "random"]:
+
+        datos = cargar_json(
+            f"resumen_politica_{politica}.json"
+        )
+
+        if datos:
+            valores.append(
+                datos["hit_rate"] * 100
+            )
+
+        else:
+            print(
+                f"Falta resumen_politica_{politica}.json"
+            )
+            return
+
+
+    plt.figure(figsize=(8,5))
+
+    plt.bar(
+        politicas,
+        valores
+    )
+
+
+    # Ajuste automático de escala para diferencias pequeñas
+    minimo = min(valores)
+    maximo = max(valores)
+
+    plt.ylim(
+        minimo - 0.5,
+        maximo + 0.5
+    )
+
+
+    plt.ylabel(
+        "Hit Rate (%)"
+    )
+
+    plt.xlabel(
+        "Política de reemplazo"
+    )
+
+
+    plt.title(
+        "Comparación de Hit Rate según política Redis"
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + 0.05,
+            f"{v:.2f}%",
+            ha="center"
+        )
+
+
+    plt.grid(
+        axis="y"
+    )
+
+
+    guardar_grafico(
+        "hit_rate_politicas.png"
+    )
+
+
+
+def grafico_evictions_politicas():
+
+    politicas = ["LRU", "Random"]
+
+    valores = []
+
+
+    for politica in ["lru", "random"]:
+
+        ruta = os.path.join(
+            DATA_DIR,
+            f"evicted_politica_{politica}.txt"
+        )
+
+        if not os.path.exists(ruta):
+
+            print(
+                f"Falta {ruta}"
+            )
+
+            return
+
+
+        with open(ruta) as f:
+
+            linea = f.readline()
+
+
+        valores.append(
+            int(linea.split(":")[1])
+        )
+
+
+    plt.figure(figsize=(8,5))
+
+
+    plt.bar(
+        politicas,
+        valores
+    )
+
+
+    plt.ylabel(
+        "Claves expulsadas"
+    )
+
+    plt.xlabel(
+        "Política de reemplazo"
+    )
+
+
+    plt.title(
+        "Evicciones Redis según política"
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + max(valores)*0.02,
+            str(v),
+            ha="center"
+        )
+
+
+    guardar_grafico(
+        "evictions_politicas.png"
+    )
+
+
+
+def grafico_latencia_politicas():
+
+    politicas = ["LRU", "Random"]
+
+    valores = []
+
+
+    for politica in ["lru", "random"]:
+
+        datos = cargar_json(
+            f"resumen_politica_{politica}.json"
+        )
+
+
+        if datos:
+
+            valores.append(
+                datos["latencia"]["media_ms"]
+            )
+
+        else:
+
+            print(
+                f"Falta resumen_politica_{politica}.json"
+            )
+
+            return
+
+
+
+    plt.figure(figsize=(8,5))
+
+
+    plt.bar(
+        politicas,
+        valores
+    )
+
+
+    plt.ylabel(
+        "Latencia media (ms)"
+    )
+
+    plt.xlabel(
+        "Política de reemplazo"
+    )
+
+
+    plt.title(
+        "Latencia según política Redis"
+    )
+
+
+    minimo = min(valores)
+
+    plt.ylim(
+        minimo - 0.2,
+        max(valores) + 0.2
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + 0.03,
+            f"{v:.3f} ms",
+            ha="center"
+        )
+
+
+    plt.grid(
+        axis="y"
+    )
+
+
+    guardar_grafico(
+        "latencia_politicas.png"
+    )
+
 def main():
 
     zipf_resumen = cargar_json("resumen_zipf.json")
@@ -363,6 +592,14 @@ def main():
     grafico_evictions_cache()
 
     grafico_latencia_cache()
+
+    # Experimentos políticas de reemplazo
+
+    grafico_hit_rate_politicas()
+
+    grafico_evictions_politicas()
+
+    grafico_latencia_politicas()
 
 
 if __name__ == "__main__":
