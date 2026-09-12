@@ -9,6 +9,14 @@ import requests
 app = Flask(__name__)
 r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, decode_responses=True)
 TTL = int(os.getenv("TTL_SECONDS", "300"))
+EXPERIMENTO_CACHE = os.getenv(
+    "EXPERIMENTO_CACHE",
+    "false"
+).lower() == "true"
+
+CACHE_PADDING_BYTES = int(
+    os.getenv("CACHE_PADDING_BYTES", "0")
+)
 SCRAPER_URL = "http://scraper:5000/scrape"
 
 
@@ -44,7 +52,17 @@ def consulta():
         return jsonify({"cache": "bypass", **resp.json()}), resp.status_code
 
     data = resp.json()
-    r.setex(key, TTL, json.dumps(data))
+
+    if EXPERIMENTO_CACHE and CACHE_PADDING_BYTES > 0:
+        data["_padding_experimento"] = (
+            "x" * CACHE_PADDING_BYTES
+        )
+
+    r.setex(
+        key,
+        TTL,
+        json.dumps(data)
+    )
     return jsonify({"cache": "miss", "data": data,
                     "latencia_ms": (time.time() - t0) * 1000})
 

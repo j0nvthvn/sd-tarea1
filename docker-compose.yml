@@ -1,7 +1,14 @@
 services:
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--maxmemory", "10mb", "--maxmemory-policy", "allkeys-lru"]
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "${REDIS_MEMORY:-10mb}",
+        "--maxmemory-policy",
+        "${REDIS_POLICY:-allkeys-lru}"
+      ]
 
   scraper:
     build: ./scraper

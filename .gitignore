@@ -21,5 +21,11 @@ data/*.csv
 !data/resumen_*.json
 
 
+# Resultados auxiliares de experimentos cache
+!data/evicted_cache_*.txt
+!data/dbsize_cache_*.txt
+!data/memory_cache_*.txt
+
+
 # Mantener graficos generados para informe
 !graficos/*.png

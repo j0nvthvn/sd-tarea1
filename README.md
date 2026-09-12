@@ -2,7 +2,9 @@
 
 Sistema distribuido de caché aplicado a consultas deportivas sobre datos de fútbol chileno obtenidos desde Soccerway.
 
-El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico y métricas de rendimiento.
+El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico, tamaños de memoria y métricas de rendimiento.
+
+---
 
 # Grupo 2
 
@@ -32,7 +34,7 @@ Generador de tráfico ---> Cache ---> Scraper
  Métricas experimentales
           |
           v
-       Archivos CSV
+ Archivos de resultados
 ```
 
 ---
@@ -46,7 +48,7 @@ Servicio encargado de generar consultas hacia el sistema distribuido.
 Características:
 
 - Generación de consultas Q1-Q5.
-- Distribución de popularidad:
+- Distribuciones de popularidad:
   - Uniforme.
   - Zipf.
 - Modelos de llegada:
@@ -55,6 +57,7 @@ Características:
 - Seed configurable para reproducibilidad.
 - Registro de métricas por consulta.
 - Generación de archivos CSV para análisis.
+- Soporte para experimentos controlados de caché.
 
 ---
 
@@ -65,10 +68,12 @@ Servicio desarrollado con Flask encargado de administrar las consultas.
 Funciones principales:
 
 - Recibir consultas desde el generador.
-- Revisar existencia de datos en Redis.
+- Generar claves determinísticas para Redis.
+- Revisar existencia de datos almacenados.
 - Consultar al scraper cuando ocurre un cache miss.
 - Almacenar respuestas utilizando TTL.
 - Medir latencia de respuesta.
+- Incorporar padding artificial para evaluar presión de memoria.
 
 ---
 
@@ -92,7 +97,8 @@ Configuración:
 
 - Redis 7 Alpine.
 - TTL configurable.
-- Política de reemplazo LRU.
+- Política de reemplazo LRU (`allkeys-lru`).
+- Tamaño de memoria configurable mediante `REDIS_MEMORY`.
 
 ---
 
@@ -145,11 +151,12 @@ El comportamiento del generador puede modificarse mediante variables de entorno.
 | ZIPF_S | Parámetro de la distribución Zipf |
 | LLEGADAS | Modelo de llegada: poisson o constante |
 | N_CONSULTAS | Cantidad total de consultas |
-| TASA_ARRIBO | Tasa de llegada de consultas por segundo |
+| TASA_ARRIBO | Tasa de llegada de consultas |
 | SEED | Semilla para reproducibilidad |
-| CSV_SALIDA | Archivo donde se almacenan los resultados |
+| CSV_SALIDA | Archivo donde se almacenan resultados |
+| CACHE_PADDING_BYTES | Tamaño artificial agregado a respuestas |
 
-Ejemplo de ejecución:
+Ejemplo:
 
 ```bash
 docker compose run --rm \
@@ -167,12 +174,14 @@ generador
 
 # Experimentos realizados
 
-Se realizaron experimentos comparando dos distribuciones de generación de tráfico:
+## Comparación de distribuciones
+
+Se evaluó el comportamiento del sistema utilizando dos patrones de generación de tráfico:
 
 - Distribución Zipf.
 - Distribución Uniforme.
 
-Condiciones utilizadas:
+Condiciones:
 
 - 1000 consultas.
 - Llegadas Poisson.
@@ -189,15 +198,44 @@ Condiciones utilizadas:
 | Misses | 114 | 166 |
 | Errores | 0 | 0 |
 | Hit Rate | 88.60% | 83.40% |
-| Throughput | 16.98 consultas/s | 16.39 consultas/s |
 
-Los resultados muestran que la distribución Zipf obtiene un mayor porcentaje de aciertos debido a una mayor concentración de consultas sobre claves populares.
+Los resultados muestran que Zipf obtiene un mayor hit rate debido a la concentración de consultas sobre claves populares, aumentando la reutilización de información almacenada en caché.
+
+---
+
+# Experimentos de tamaño de caché
+
+Se evaluó el impacto de aumentar la memoria disponible en Redis utilizando:
+
+- Redis con política `allkeys-lru`.
+- Distribución uniforme.
+- 10000 consultas.
+- Seed fija.
+- Padding artificial de respuestas.
+- Tamaños de caché:
+  - 2 MB.
+  - 5 MB.
+  - 10 MB.
+
+## Resultados
+
+| Memoria caché | Hit Rate | Evicciones |
+|--------------|----------|------------|
+| 2 MB | 20.14% | 7920 |
+| 5 MB | 20.17% | 5244 |
+| 10 MB | 20.18% | 0 |
+
+## Análisis
+
+El aumento del tamaño de caché reduce significativamente las expulsiones realizadas por Redis mediante la política LRU.
+
+Sin embargo, el hit rate presenta variaciones mínimas debido al patrón uniforme de consultas y al amplio espacio de claves disponible. Bajo este escenario, aumentar la memoria permite almacenar más información, pero no garantiza una mayor reutilización de consultas.
 
 ---
 
 # Métricas generadas
 
-El generador registra información de cada consulta realizada:
+El sistema registra información de cada consulta:
 
 - Tipo de consulta.
 - Parámetros utilizados.
@@ -206,17 +244,78 @@ El generador registra información de cada consulta realizada:
   - Miss.
   - Error.
 - Latencia de respuesta.
-- Latencia del caché.
 - Cantidad de resultados obtenidos.
-- Errores asociados.
+- Información de evicciones Redis.
+- Uso de memoria Redis.
 
-Los resultados son almacenados en archivos CSV:
+Resultados almacenados:
 
 ```
 data/
+
 ├── generador_zipf.csv
-└── generador_uniforme.csv
+├── generador_uniforme.csv
+├── resumen_cache_2mb.json
+├── resumen_cache_5mb.json
+├── resumen_cache_10mb.json
+├── evicted_cache_2mb.txt
+├── evicted_cache_5mb.txt
+└── evicted_cache_10mb.txt
 ```
+
+---
+
+# Generación de gráficos
+
+Los gráficos experimentales se generan automáticamente mediante:
+
+```bash
+python3 graficos/generar_graficos.py
+```
+
+Se generan:
+
+- Hit rate según distribución.
+- Hit rate por tipo de consulta.
+- Latencia hit/miss.
+- Hit rate según tamaño de caché.
+- Evicciones según tamaño de caché.
+- Latencia según tamaño de caché.
+
+Archivos generados:
+
+```
+graficos/
+
+├── hit_rate_distribucion.png
+├── hit_rate_por_tipo.png
+├── latencia_hit_miss.png
+├── hit_rate_cache.png
+├── evictions_cache.png
+└── latencia_cache.png
+```
+
+---
+
+# Experimentos de caché
+
+Los experimentos de memoria pueden ejecutarse mediante:
+
+```bash
+./experimentos/cache_2mb.sh
+
+./experimentos/cache_5mb.sh
+
+./experimentos/cache_10mb.sh
+```
+
+Cada script:
+
+1. Configura el tamaño de memoria Redis.
+2. Limpia la caché.
+3. Ejecuta el generador.
+4. Guarda métricas del experimento.
+5. Genera gráficos cuando están disponibles todos los resultados.
 
 ---
 
@@ -229,6 +328,8 @@ sd-tarea1/
 ├── scraper/
 ├── generador/
 ├── metricas/
+├── experimentos/
+├── graficos/
 ├── data/
 ├── docker-compose.yml
 └── README.md
@@ -240,4 +341,4 @@ sd-tarea1/
 
 GitLab Grupo 2:
 
-<https://giteit.udp.cl/CIT2011/2026-2/seccion-2/grupo-2>
+https://giteit.udp.cl/CIT2011/2026-2/seccion-2/grupo-2
