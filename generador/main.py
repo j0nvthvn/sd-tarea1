@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass, asdict
 
 from client import enviar_consulta, esperar_servicio
+from metric_client import enviar_metrica
 from distributions import DISTRIBUCIONES, Selector
 from metrics import Acumulador
 from queries import TIPOS_CONSULTA, espacio_de_claves, generar_consulta
@@ -31,6 +32,7 @@ class Config:
     seed: int
     cache_url: str
     health_url: str
+    metricas_url: str
     timeout: float
     csv_salida: str
 
@@ -59,6 +61,7 @@ def cargar_config() -> Config:
         seed=_entero("SEED", "42"),
         cache_url=os.getenv("CACHE_URL", "http://cache:5000/consulta"),
         health_url=os.getenv("HEALTH_URL", "http://scraper:5000/health"),
+        metricas_url=os.getenv("METRICAS_URL", "http://metricas:5000/evento"),
         timeout=_decimal("TIMEOUT", "30"),
         csv_salida=os.getenv("CSV_SALIDA", "/app/data/generador.csv"),
     )
@@ -110,6 +113,7 @@ def main():
         tipo = selector.elegir(TIPOS_CONSULTA)
         consulta = generar_consulta(tipo, selector)
         resultado = enviar_consulta(config.cache_url, consulta, timeout=config.timeout)
+        enviar_metrica(config.metricas_url, tipo, resultado)
         metricas.registrar(i, tipo, consulta, resultado)
 
         if i <= 5 or i % 100 == 0:

@@ -1,0 +1,3 @@
+evicted_keys:7920
+evicted_clients:0
+evicted_scripts:0
