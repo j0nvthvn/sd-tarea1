@@ -1,0 +1,3 @@
+evicted_keys:0
+evicted_clients:0
+evicted_scripts:0

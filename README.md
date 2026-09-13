@@ -2,7 +2,7 @@
 
 Sistema distribuido de caché aplicado a consultas deportivas sobre datos de fútbol chileno obtenidos desde Soccerway.
 
-El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico, tamaños de memoria y políticas de reemplazo.
+El objetivo del proyecto es implementar y evaluar una arquitectura distribuida utilizando un sistema de caché basado en Redis, analizando su impacto mediante diferentes patrones de generación de tráfico, tamaños de memoria, políticas de reemplazo y configuraciones TTL.
 
 ---
 
@@ -285,6 +285,51 @@ La diferencia de hit rate fue menor al 0.05%, mostrando que bajo este escenario 
 
 ---
 
+# Evaluación del TTL de caché
+
+Se evaluó el impacto del tiempo de vida de las claves almacenadas en Redis mediante diferentes configuraciones TTL.
+
+## Configuración
+
+- Caché: 2 MB.
+
+- Consultas: 10000.
+
+- Distribución: Uniforme.
+
+- Modelo de llegada: Poisson.
+
+- Seed: 42.
+
+- Padding artificial: 5000 bytes.
+
+Valores evaluados:
+
+- TTL = 30 segundos.
+
+- TTL = 300 segundos.
+
+- TTL = 900 segundos.
+
+
+## Resultados
+
+| TTL | Hit Rate | Latencia promedio | Claves expiradas | Evicciones |
+|-----|----------|-------------------|------------------|------------|
+| 30 segundos | 19.94% | 6.325 ms | 7663 | 0 |
+| 300 segundos | 20.18% | 6.240 ms | 4431 | 0 |
+| 900 segundos | 20.21% | 6.249 ms | 0 | 2468 |
+
+## Análisis
+
+Al aumentar el TTL disminuye la cantidad de claves expiradas dentro de Redis, permitiendo que la información permanezca almacenada durante más tiempo.
+
+Sin embargo, debido al patrón uniforme de consultas utilizado, el hit rate presenta variaciones reducidas, ya que existe baja reutilización temporal de claves.
+
+Además, un TTL elevado aumenta la permanencia de datos en memoria. Bajo restricciones de capacidad, esto puede provocar evicciones mediante la política de reemplazo configurada en Redis, generando un equilibrio entre disponibilidad de datos y uso eficiente de memoria.
+
+---
+
 # Scripts de experimentación
 
 Todos los experimentos fueron automatizados mediante scripts Bash ubicados en:
@@ -382,6 +427,59 @@ data/
 
 ---
 
+# Experimentos TTL
+
+## Scripts
+
+```bash
+
+./experimentos/ttl_30s.sh
+
+./experimentos/ttl_300s.sh
+
+./experimentos/ttl_900s.sh
+
+```
+
+Cada script:
+
+1. Configura el TTL correspondiente en Redis.
+
+2. Reinicia los servicios necesarios.
+
+3. Limpia la caché.
+
+4. Ejecuta el generador de consultas.
+
+5. Guarda métricas del experimento.
+
+6. Genera archivos para análisis posterior.
+
+Resultados:
+
+```text
+
+data/
+
+├── resumen_ttl_30s.json
+├── resumen_ttl_300s.json
+├── resumen_ttl_900s.json
+├── expired_ttl_30s.txt
+├── expired_ttl_300s.txt
+├── expired_ttl_900s.txt
+├── evicted_ttl_30s.txt
+├── evicted_ttl_300s.txt
+├── evicted_ttl_900s.txt
+├── dbsize_ttl_30s.txt
+├── dbsize_ttl_300s.txt
+├── dbsize_ttl_900s.txt
+├── memory_ttl_30s.txt
+├── memory_ttl_300s.txt
+└── memory_ttl_900s.txt
+```
+
+---
+
 # Métricas generadas
 
 El sistema registra:
@@ -395,8 +493,8 @@ El sistema registra:
 - Latencia.
 - Cantidad de resultados.
 - Evicciones Redis.
+- Expiraciones TTL Redis.
 - Uso de memoria Redis.
-
 ---
 
 # Generación de gráficos
@@ -418,6 +516,9 @@ Se generan:
 - Hit rate según política de reemplazo.
 - Evicciones según política de reemplazo.
 - Latencia según política de reemplazo.
+- Hit rate según TTL.
+- Latencia según TTL.
+- Expiraciones según TTL.
 
 Archivos:
 
@@ -432,7 +533,10 @@ graficos/
 ├── latencia_cache.png
 ├── hit_rate_politicas.png
 ├── evictions_politicas.png
-└── latencia_politicas.png
+├── latencia_politicas.png
+├── hit_rate_ttl.png
+├── latencia_ttl.png
+└── expired_ttl.png
 ```
 
 ---
@@ -453,12 +557,29 @@ sd-tarea1/
 │   ├── cache_5mb.sh
 │   ├── cache_10mb.sh
 │   ├── politica_lru.sh
-│   └── politica_random.sh
+│   ├── politica_random.sh
+│   ├── ttl_30s.sh
+│   ├── ttl_300s.sh
+│   └── ttl_900s.sh
 ├── graficos/
 ├── data/
 ├── docker-compose.yml
 └── README.md
 ```
+
+---
+
+# Conclusiones
+
+Los experimentos realizados permitieron evaluar distintos factores que afectan el rendimiento de un sistema distribuido basado en caché Redis.
+
+La distribución Zipf obtuvo mejores tasas de acierto debido a la concentración de consultas sobre claves populares, mientras que la distribución uniforme presentó menor reutilización.
+
+El aumento de memoria disponible redujo las evicciones, aunque su impacto sobre el hit rate fue limitado debido al patrón de consultas utilizado.
+
+Las políticas de reemplazo LRU y Random presentaron comportamientos similares bajo tráfico uniforme, mostrando que la localidad de acceso es un factor determinante para obtener beneficios mediante estrategias inteligentes de reemplazo.
+
+Finalmente, el análisis TTL mostró que valores pequeños permiten liberar memoria mediante expiraciones, mientras que valores altos aumentan la permanencia de datos pero pueden incrementar la presión sobre la memoria disponible.
 
 ---
 

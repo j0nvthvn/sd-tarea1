@@ -9,6 +9,11 @@ services:
         "--maxmemory-policy",
         "${REDIS_POLICY:-allkeys-lru}"
       ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   scraper:
     build: ./scraper
@@ -23,7 +28,7 @@ services:
     depends_on: [redis, scraper]
     environment:
       - REDIS_HOST=redis
-      - TTL_SECONDS=300
+      - TTL_SECONDS=${TTL_SECONDS:-300}
     ports:
       - "8000:5000"
 

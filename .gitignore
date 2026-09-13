@@ -20,10 +20,12 @@ data/*.csv
 # Resultados resumidos de experimentos
 !data/resumen_*.json
 
-# Resultados experimentos cache
+
+# Resultados métricas Redis
 !data/evicted_*.txt
 !data/dbsize_*.txt
 !data/memory_*.txt
+!data/expired_*.txt
 
 
 # Mantener gráficos generados para informe

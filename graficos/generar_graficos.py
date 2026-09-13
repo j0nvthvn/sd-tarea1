@@ -560,6 +560,237 @@ def grafico_latencia_politicas():
         "latencia_politicas.png"
     )
 
+def grafico_hit_rate_ttl():
+
+    etiquetas = ["30s", "300s", "900s"]
+    valores = []
+
+    for ttl in ["30s", "300s", "900s"]:
+
+        datos = cargar_json(
+            f"resumen_ttl_{ttl}.json"
+        )
+
+        if datos:
+            valores.append(
+                datos["hit_rate"] * 100
+            )
+
+        else:
+            print(
+                f"Falta resumen_ttl_{ttl}.json"
+            )
+            return
+
+
+    plt.figure(figsize=(8,5))
+
+    plt.bar(
+        etiquetas,
+        valores
+    )
+
+    plt.ylim(0,100)
+
+    plt.xlabel(
+        "TTL Redis"
+    )
+
+    plt.ylabel(
+        "Hit Rate (%)"
+    )
+
+    plt.title(
+        "Hit Rate según TTL de caché"
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + 1,
+            f"{v:.2f}%",
+            ha="center"
+        )
+
+
+    plt.figtext(
+        0.5,
+        -0.02,
+        "Configuración: 2MB caché | 10000 consultas | Distribución Uniforme | Seed=42",
+        ha="center",
+        fontsize=9
+    )
+
+
+    guardar_grafico(
+        "hit_rate_ttl.png"
+    )
+
+
+
+def grafico_expired_ttl():
+
+    etiquetas = ["30s", "300s", "900s"]
+    valores = []
+
+    for ttl in ["30s", "300s", "900s"]:
+
+        ruta = os.path.join(
+            DATA_DIR,
+            f"expired_ttl_{ttl}.txt"
+        )
+
+        if not os.path.exists(ruta):
+            print(f"Falta {ruta}")
+            return
+
+
+        valor = None
+
+        with open(ruta) as f:
+            for linea in f:
+                if "expired_keys" in linea:
+                    valor = int(linea.split(":")[1])
+                    break
+
+
+        if valor is None:
+            print(f"No se encontró expired_keys en {ruta}")
+            return
+
+
+        valores.append(valor)
+
+
+
+    plt.figure(figsize=(8,5))
+
+    plt.bar(
+        etiquetas,
+        valores
+    )
+
+
+    plt.xlabel(
+        "TTL Redis"
+    )
+
+    plt.ylabel(
+        "Claves expiradas"
+    )
+
+    plt.title(
+        "Expiraciones Redis según TTL"
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + max(valores)*0.02,
+            str(v),
+            ha="center"
+        )
+
+
+    plt.figtext(
+        0.5,
+        -0.02,
+        "Configuración: 2MB caché | 10000 consultas | Distribución Uniforme | Seed=42",
+        ha="center",
+        fontsize=9
+    )
+
+
+    guardar_grafico(
+        "expired_ttl.png"
+    )
+
+def grafico_latencia_ttl():
+
+    etiquetas = ["30s", "300s", "900s"]
+    valores = []
+
+
+    for ttl in ["30s", "300s", "900s"]:
+
+        datos = cargar_json(
+            f"resumen_ttl_{ttl}.json"
+        )
+
+
+        if datos:
+
+            valores.append(
+                datos["latencia"]["media_ms"]
+            )
+
+        else:
+
+            print(
+                f"Falta resumen_ttl_{ttl}.json"
+            )
+
+            return
+
+
+
+    plt.figure(figsize=(8,5))
+
+
+    plt.bar(
+        etiquetas,
+        valores
+    )
+
+
+    plt.xlabel(
+        "TTL Redis"
+    )
+
+    plt.ylabel(
+        "Latencia promedio (ms)"
+    )
+
+    plt.title(
+        "Latencia promedio según TTL"
+    )
+
+
+    minimo = min(valores)
+
+    plt.ylim(
+        minimo - 0.2,
+        max(valores) + 0.2
+    )
+
+
+    for i,v in enumerate(valores):
+
+        plt.text(
+            i,
+            v + 0.03,
+            f"{v:.3f} ms",
+            ha="center"
+        )
+
+
+    plt.figtext(
+        0.5,
+        -0.02,
+        "Configuración: 2MB caché | 10000 consultas | Distribución Uniforme | Seed=42",
+        ha="center",
+        fontsize=9
+    )
+
+
+    guardar_grafico(
+        "latencia_ttl.png"
+    )
+
 def main():
 
     zipf_resumen = cargar_json("resumen_zipf.json")
@@ -600,6 +831,14 @@ def main():
     grafico_evictions_politicas()
 
     grafico_latencia_politicas()
+
+    # Experimentos TTL
+
+    grafico_hit_rate_ttl()
+
+    grafico_expired_ttl()
+
+    grafico_latencia_ttl()
 
 
 if __name__ == "__main__":
